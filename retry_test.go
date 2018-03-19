@@ -68,8 +68,12 @@ func (rt *retryRoundTipperFixture) RoundTrip(r *http.Request) (*http.Response, e
 	var result, e, latency = rt.responses[rt.Calls].Response, rt.responses[rt.Calls].Error, rt.responses[rt.Calls].Sleep
 	rt.Calls = rt.Calls + 1
 	rt.lock.Unlock()
-	time.Sleep(latency)
-	return result, e
+	select {
+	case <-time.After(latency):
+		return result, e
+	case <-r.Context().Done():
+		return nil, r.Context().Err()
+	}
 }
 
 func newRetryRoundTripperFixture(responses ...retryRoundTipperFixtureResponse) *retryRoundTipperFixture {
@@ -90,11 +94,10 @@ func TestRetryTimeIfNoLatency(t *testing.T) {
 	}
 	var wrapped = newRetryRoundTripperFixture(responses...)
 	var rt = NewRetrier(
-		RetrierOptionLimit(3),
-		RetrierOptionDelay(time.Millisecond),
-		RetrierOptionDelayJitter(time.Millisecond),
-		RetrierOptionTimeout(time.Millisecond),
+		NewFixedBackoffPolicy(0),
+		NewTimeoutRetryPolicy(time.Millisecond),
 	)(wrapped)
+
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var resp, e = rt.RoundTrip(req)
 	if wrapped.Calls != 1 {
@@ -110,75 +113,104 @@ func TestRetryTimeIfNoLatency(t *testing.T) {
 
 func TestRetryTimeIfLatency(t *testing.T) {
 	var responses = []retryRoundTipperFixtureResponse{
-		{Error: context.DeadlineExceeded, Response: nil, Sleep: 2 * time.Millisecond},
-		{Error: context.DeadlineExceeded, Response: nil, Sleep: 2 * time.Millisecond},
-		{Error: context.DeadlineExceeded, Response: nil, Sleep: 2 * time.Millisecond},
-		{Error: context.DeadlineExceeded, Response: nil, Sleep: 2 * time.Millisecond},
-		{Error: context.DeadlineExceeded, Response: nil, Sleep: 2 * time.Millisecond},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
 	}
 	var wrapped = newRetryRoundTripperFixture(responses...)
 	var rt = NewRetrier(
-		RetrierOptionLimit(3),
-		RetrierOptionDelay(time.Millisecond),
-		RetrierOptionDelayJitter(time.Millisecond),
-		RetrierOptionTimeout(time.Millisecond),
+		NewFixedBackoffPolicy(0),
+		NewTimeoutRetryPolicy(time.Millisecond),
 	)(wrapped)
+
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Millisecond)
+	defer cancel()
+	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
+	var _, e = rt.RoundTrip(req.WithContext(ctx))
+	if wrapped.Calls != 3 {
+		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
+	}
+	if e == nil {
+		t.Fatal("expected an error but got nil")
+	}
+}
+
+func TestRetryCode(t *testing.T) {
+	var responses = []retryRoundTipperFixtureResponse{
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+	}
+	var wrapped = newRetryRoundTripperFixture(responses...)
+	var rt = NewRetrier(
+		NewFixedBackoffPolicy(0),
+		NewStatusCodeRetryPolicy(http.StatusInternalServerError),
+	)(wrapped)
+
+	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
+	var _, e = rt.RoundTrip(req)
+	if wrapped.Calls != 5 {
+		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
+	}
+	if e != nil {
+		t.Fatal("expected a success but got: %s", e.Error())
+	}
+}
+
+func TestRetryLimit(t *testing.T) {
+	var responses = []retryRoundTipperFixtureResponse{
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+	}
+	var wrapped = newRetryRoundTripperFixture(responses...)
+	var rt = NewRetrier(
+		NewFixedBackoffPolicy(0),
+		NewLimitedRetryPolicy(3, NewStatusCodeRetryPolicy(http.StatusInternalServerError)),
+	)(wrapped)
+
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var _, e = rt.RoundTrip(req)
 	if wrapped.Calls != 4 {
-		t.Fatalf("called %d times instead of 4", wrapped.Calls)
-	}
-	if e == nil {
-		t.Fatal("did not get an error response from the RoundTripper")
-	}
-}
-
-func TestRetryTimeRespectsParentContextDeadline(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 2 * time.Millisecond},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 2 * time.Millisecond},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
-	var rt = NewRetrier(
-		RetrierOptionLimit(3),
-		RetrierOptionDelay(time.Millisecond),
-		RetrierOptionDelayJitter(time.Millisecond),
-		RetrierOptionTimeout(time.Millisecond),
-	)(wrapped)
-	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
-	var ctx, cancel = context.WithTimeout(req.Context(), time.Millisecond)
-	defer cancel()
-	var _, e = rt.RoundTrip(req.WithContext(ctx))
-	if wrapped.Calls != 1 {
-		t.Fatalf("called %d times instead of 1", wrapped.Calls)
-	}
-	if e != context.DeadlineExceeded {
-		t.Fatal("did not get an error response from the RoundTripper")
-	}
-}
-
-func TestRetryCodes(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
-	var rt = NewRetrier(
-		RetrierOptionLimit(3),
-		RetrierOptionDelay(time.Millisecond),
-		RetrierOptionDelayJitter(time.Millisecond),
-		RetrierOptionResponseCode(http.StatusInternalServerError),
-	)(wrapped)
-	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
-	var resp, e = rt.RoundTrip(req)
-	if wrapped.Calls != 3 {
-		t.Fatalf("called %d times instead of 3", wrapped.Calls)
+		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
 	}
 	if e != nil {
-		t.Fatal(e.Error())
+		t.Fatal("expected a response with bad code but got: %s", e.Error())
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("did not retry until 200 OK: %d", resp.StatusCode)
+}
+
+func TestJitterCalculation(t *testing.T) {
+	var jitterValue = float64(1)
+	var original = time.Millisecond
+	var percentage = .1
+	var randomCalled = false
+	var random = func() float64 {
+		if randomCalled {
+			return 0
+		}
+		randomCalled = true
+		return jitterValue
+	}
+	var result = calculateJitteredBackoff(original, percentage, random)
+	if result != (time.Millisecond + 100*time.Microsecond) {
+		t.Fatal(result)
+	}
+	randomCalled = false
+	random = func() float64 {
+		if randomCalled {
+			return 1
+		}
+		randomCalled = true
+		return jitterValue
+	}
+	result = calculateJitteredBackoff(original, percentage, random)
+	if result != (time.Millisecond - 100*time.Microsecond) {
+		t.Fatal(result)
 	}
 }
