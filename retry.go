@@ -48,10 +48,10 @@ type Retrier interface {
 	Retry(*http.Request, *http.Response, error) bool
 }
 
-// Contexter can be implemented if the Retrier needs to manipulate the context
-// of a request before it is executed.
-type Contexter interface {
-	Context(context.Context) context.Context
+// Requester can be implemented if the Retrier needs to manipulate the request
+// or request context before it is executed.
+type Requester interface {
+	Request(*http.Request) *http.Request
 }
 
 // RetryPolicy is a factory that generates a Retrier.
@@ -87,15 +87,15 @@ func NewLimitedRetryPolicy(limit int, policies ...RetryPolicy) RetryPolicy {
 	}
 }
 
-// Context implements Contexter by calling the wrapped context methods where
+// Request implements Requester by calling the wrapped Request methods where
 // needed.
-func (r *LimitedRetrier) Context(ctx context.Context) context.Context {
+func (r *LimitedRetrier) Request(req *http.Request) *http.Request {
 	for _, retry := range r.retries {
-		if ctxer, ok := retry.(Contexter); ok {
-			ctx = ctxer.Context(ctx)
+		if requester, ok := retry.(Requester); ok {
+			req = requester.Request(req)
 		}
 	}
-	return ctx
+	return req
 }
 
 // Retry the request based on the wrapped policies until the limit is reached.
@@ -158,10 +158,10 @@ func (r *TimeoutRetrier) Retry(req *http.Request, resp *http.Response, e error) 
 	return e == context.DeadlineExceeded
 }
 
-// Context adds a timeout to the request.
-func (r *TimeoutRetrier) Context(ctx context.Context) context.Context {
-	ctx, _ = context.WithTimeout(ctx, r.timeout) // nolint
-	return ctx
+// Request adds a timeout to the request context.
+func (r *TimeoutRetrier) Request(req *http.Request) *http.Request {
+	var ctx, _ = context.WithTimeout(req.Context(), r.timeout) // nolint
+	return req.WithContext(ctx)
 }
 
 // FixedBackoffer signals the client to wait for a static amount of time.
@@ -233,6 +233,7 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 	var response *http.Response
 	var requestCtx, cancel = context.WithCancel(parentCtx)
 	defer cancel()
+	var req = copier.Copy().WithContext(requestCtx)
 
 	var retriers = make([]Retrier, 0, len(c.retryPolicies))
 	var backoffer = c.backoffPolicy()
@@ -240,13 +241,12 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 		retriers = append(retriers, retryPolicy())
 	}
 	for _, retrier := range retriers {
-		if ctxer, ok := retrier.(Contexter); ok {
-			requestCtx = ctxer.Context(requestCtx)
+		if requester, ok := retrier.(Requester); ok {
+			req = requester.Request(req)
 		}
 	}
 
-	var req = copier.Copy()
-	response, e = c.wrapped.RoundTrip(req.WithContext(requestCtx))
+	response, e = c.wrapped.RoundTrip(req)
 	for c.shouldRetry(r, response, e, retriers) {
 		select {
 		case <-parentCtx.Done():
@@ -255,13 +255,13 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 		}
 		requestCtx, cancel = context.WithCancel(parentCtx)
 		defer cancel()
+		var req = copier.Copy().WithContext(requestCtx)
 		for _, retrier := range retriers {
-			if ctxer, ok := retrier.(Contexter); ok {
-				requestCtx = ctxer.Context(requestCtx)
+			if requester, ok := retrier.(Requester); ok {
+				req = requester.Request(req)
 			}
 		}
-		var req = copier.Copy()
-		response, e = c.wrapped.RoundTrip(req.WithContext(requestCtx))
+		response, e = c.wrapped.RoundTrip(req)
 	}
 	return response, e
 }
