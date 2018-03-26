@@ -59,12 +59,16 @@ decorator that can be configured to retry on a number of conditions within a
 number of limits without adding more complexity to code using the `http.Client`.
 
 ```golang
-var retryDecorator = transport.NewRetrier(
-  transport.RetrierOptionResponseCode(http.StatusInternalServerError),
-  transport.RetrierOptionTimeout(100*time.Millisecond),
-  transport.RetrierOptionLimit(3),
-  transport.RetrierOptionDelay(50*time.Millisecond),
-  transport.RetrierOptionDelayJitter(30*time.Millisecond),
+var retryDecorator = transport.NewRetry(
+  transport.NewPercentJitteredBackoffPolicy(
+    .2, // Jitter within 20% of the delay.
+    transport.NewFixedBackoffPolicy(50*time.Millisecond),
+  ),
+  transport.NewLimitedRetryPolicy(
+    3, // Only make up to 3 retry attempts
+    transport.NewStatusCodeRetryPolicy(http.StatusInternalServerError),
+    transport.NewTimeoutRetryPolicy(100*time.Millisecond),
+  ),
 )
 var t = transport.New(
   transport.OptionDefaultTransport,
@@ -78,10 +82,10 @@ var client = &http.Client{
 
 The above snippet adds retry logic that:
 
-  -   Retries up to three times before failing
-  -   Adds a jittered delay between each retry of 20ms and 80ms
-  -   Retries automatically if the response code is 500
-  -   Cancels an active request and retries if it takes longer than 100ms
+  -   Makes up to 3 additional attempts to get a valid response.
+  -   Adds a jittered delay between each retry of 40ms to 60ms.
+  -   Retries automatically if the response code is 500.
+  -   Cancels an active request and retries if it takes longer than 100ms.
 
 #### Headers ####
 
