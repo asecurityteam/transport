@@ -157,7 +157,7 @@ func TestRetryCode(t *testing.T) {
 		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
 	}
 	if e != nil {
-		t.Fatal("expected a success but got: %s", e.Error())
+		t.Fatalf("expected a success but got: %s", e.Error())
 	}
 }
 
@@ -181,7 +181,7 @@ func TestRetryLimit(t *testing.T) {
 		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
 	}
 	if e != nil {
-		t.Fatal("expected a response with bad code but got: %s", e.Error())
+		t.Fatalf("expected a response with bad code but got: %s", e.Error())
 	}
 }
 
