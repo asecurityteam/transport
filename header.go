@@ -24,6 +24,9 @@ func (c *Header) RoundTrip(r *http.Request) (*http.Response, error) {
 // NewHeader wraps a transport in order to include custom headers.
 func NewHeader(provider HeaderProvider) func(http.RoundTripper) http.RoundTripper {
 	return func(c http.RoundTripper) http.RoundTripper {
-		return &Header{c, provider}
+		return &Header{
+			wrapped:  c,
+			provider: provider,
+		}
 	}
 }
