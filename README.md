@@ -87,6 +87,35 @@ The above snippet adds retry logic that:
   -   Retries automatically if the response code is 500.
   -   Cancels an active request and retries if it takes longer than 100ms.
 
+#### Hedging ####
+
+The hedging decorator fans out a new request at each time interval defined
+by the backoff policy, and returns the first response received. For
+latency-based retries, this will often be a better approach than a
+"stop-and-retry" policy (such as the Timeout Retry Policy). The hedging decorator
+allows for a worst case request to take up to a maximum configurable timeout,
+while pessimistically creating new requests before the timeout is reached.
+
+```golang
+var hedgingDecorator = transport.NewHedger(
+	transport.NewFixedBackoffPolicy(50*time.Millisecond),
+)
+var t = transport.New(
+	transport.OptionDefaultTransport,
+	transport.OptionMaxResponseHeaderBytes(4096),
+	transport.OptionDisableCompression(true),
+)
+var client = &http.Client{
+	Transport: hedgingDecorator(t),
+	Timeout:   500 * time.Millisecond,
+}
+```
+
+The above snippet adds hedging logic that:
+
+  -   Fans out a new request if no response is received in 50ms.
+  -   Fans out a maximum of 10 parallel requests before all in-flight requests are cancelled.
+
 #### Headers ####
 
 Another common need is to inject headers automatically into outgoing requests

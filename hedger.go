@@ -7,7 +7,11 @@ import (
 )
 
 // Hedger is a wrapper that fans out a new request at each time interval defined
-// by the backoff policy, and returns the first response received.
+// by the backoff policy, and returns the first response received. For
+// latency-based retries, this will often be a better approach than a
+// "stop-and-retry" policy (such as the TimeoutRetrier). The hedging decorator
+// allows for a worst case request to take up to a maximum configurable timeout,
+// while pessimistically creating new requests before the timeout is reached.
 type Hedger struct {
 	wrapped       http.RoundTripper
 	backoffPolicy BackoffPolicy
