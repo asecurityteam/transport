@@ -14,7 +14,5 @@ pipelines:
     - step:
         name: Test
         script:
-          - curl https://glide.sh/get | sh
-          - glide up
           - echo '# Generate coverage report and test for race conditions'
           - go test -race -cover
