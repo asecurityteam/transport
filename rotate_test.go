@@ -16,7 +16,7 @@ func (roundTripperForRotatorTests) RoundTrip(*http.Request) (*http.Response, err
 
 func TestRotatorOptionInstances(t *testing.T) {
 	var factory = func() http.RoundTripper {
-		return &roundTripperForRotatorTests{"string"}
+		return &roundTripperForRotatorTests{v: "string"}
 	}
 	var r = NewRotator(factory)
 	if len(r.instances) != 1 {

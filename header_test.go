@@ -18,15 +18,14 @@ func (c *fixtureHeaderTransport) RoundTrip(r *http.Request) (*http.Response, err
 
 func TestHeaderAddsHeaders(t *testing.T) {
 	t.Parallel()
-	var provider func(*http.Request) (string, string)
-	provider = func(*http.Request) (string, string) {
+	var provider = func(*http.Request) (string, string) {
 		return "KEY", "VALUE"
 	}
 
 	var fixture = &fixtureHeaderTransport{}
 	var client = NewHeader(provider)(fixture)
 	var r, _ = http.NewRequest("GET", "/", nil)
-	client.RoundTrip(r)
+	_, _ = client.RoundTrip(r)
 	if fixture.Request.Header.Get("KEY") != "VALUE" {
 		t.Fatal("Decorator did not add headers to the request.")
 	}

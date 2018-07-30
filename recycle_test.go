@@ -17,7 +17,7 @@ func (roundTripperForRecycleTests) RoundTrip(*http.Request) (*http.Response, err
 
 func TestRecycleOptionTTL(t *testing.T) {
 	var factory = func() http.RoundTripper {
-		return &roundTripperForRecycleTests{"string"}
+		return &roundTripperForRecycleTests{v: "string"}
 	}
 	var r = NewRecycler(factory)
 	if r.ttl != 0 {
@@ -41,7 +41,7 @@ func TestRecycleOptionTTL(t *testing.T) {
 	if r.getTransport() != result {
 		t.Fatal("regenerated transport before ttl")
 	}
-	time.Sleep(r.nextTTL.Sub(time.Now()) + 5*time.Millisecond)
+	time.Sleep(time.Until(r.nextTTL) + 5*time.Millisecond)
 	if r.getTransport() == result {
 		t.Fatal("did not regenerated transport after ttl")
 	}
@@ -49,7 +49,7 @@ func TestRecycleOptionTTL(t *testing.T) {
 
 func TestRecycleOptionMaxusage(t *testing.T) {
 	var factory = func() http.RoundTripper {
-		return &roundTripperForRecycleTests{"string2"}
+		return &roundTripperForRecycleTests{v: "string2"}
 	}
 	var r = NewRecycler(factory)
 	if r.maxUsage != 0 {
@@ -80,7 +80,7 @@ func TestRecycleOptionMaxusage(t *testing.T) {
 
 func TestRecycleOptionChannel(t *testing.T) {
 	var factory = func() http.RoundTripper {
-		return &roundTripperForRecycleTests{"string3"}
+		return &roundTripperForRecycleTests{v: "string3"}
 	}
 	var r = NewRecycler(factory)
 	if len(r.signals) != 0 {

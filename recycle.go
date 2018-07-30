@@ -63,7 +63,7 @@ func RecycleOptionChannel(signal chan struct{}) RecycleOption {
 // NewRecycler uses the given factory as a source and recycles the transport
 // based on the options given.
 func NewRecycler(factory Factory, opts ...RecycleOption) *Recycler {
-	var r = &Recycler{wrapped: factory(), lock: &sync.Mutex{}, factory: factory, signal: make(chan struct{}, 0)}
+	var r = &Recycler{wrapped: factory(), lock: &sync.Mutex{}, factory: factory, signal: make(chan struct{})}
 	for _, opt := range opts {
 		r = opt(r)
 	}

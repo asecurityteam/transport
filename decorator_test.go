@@ -26,7 +26,7 @@ func TestChainAppliesReverseOrder(t *testing.T) {
 		annotator("three"),
 	}
 	var result = chain.Apply(base)
-	result.RoundTrip(nil)
+	_, _ = result.RoundTrip(nil)
 	if len(annotations) != 3 {
 		t.Fatal("did not apply decorators")
 	}
@@ -63,7 +63,7 @@ func TestChainAppliesFactoryReverseOrder(t *testing.T) {
 		annotator("three"),
 	}
 	var result = chain.ApplyFactory(base)
-	result().RoundTrip(nil)
+	_, _ = result().RoundTrip(nil)
 	if len(annotations) != 3 {
 		t.Fatal("did not apply decorators")
 	}

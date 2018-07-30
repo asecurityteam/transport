@@ -15,7 +15,7 @@ func TestRoundTripperFunc(t *testing.T) {
 		return nil, nil
 	})
 
-	c.RoundTrip(req)
+	_, _ = c.RoundTrip(req)
 	if !called || found != req {
 		t.Fatal("did not call wrapped function with request")
 	}

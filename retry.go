@@ -26,7 +26,7 @@ func newRequestCopier(r *http.Request) (*requestCopier, error) {
 	if r.Body != nil {
 		body, e = ioutil.ReadAll(r.Body)
 	}
-	return &requestCopier{r, body}, e
+	return &requestCopier{original: r, body: body}, e
 }
 
 func (r *requestCopier) Copy() *http.Request {
@@ -147,7 +147,7 @@ type TimeoutRetrier struct {
 // NewTimeoutRetryPolicy generates a RetryPolicy that ends a request after a
 // given timeout duration and tries again.
 func NewTimeoutRetryPolicy(timeout time.Duration) RetryPolicy {
-	var retrier = &TimeoutRetrier{timeout}
+	var retrier = &TimeoutRetrier{timeout: timeout}
 	return func() Retrier {
 		return retrier
 	}
@@ -172,7 +172,7 @@ type FixedBackoffer struct {
 // NewFixedBackoffPolicy generates a BackoffPolicy that always returns the
 // same value.
 func NewFixedBackoffPolicy(wait time.Duration) BackoffPolicy {
-	var backoffer = &FixedBackoffer{wait}
+	var backoffer = &FixedBackoffer{wait: wait}
 	return func() Backoffer {
 		return backoffer
 	}
@@ -197,7 +197,11 @@ type PercentJitteredBackoffer struct {
 // negative value equally.
 func NewPercentJitteredBackoffPolicy(wrapped BackoffPolicy, jitterPercent float64) BackoffPolicy {
 	return func() Backoffer {
-		return &PercentJitteredBackoffer{wrapped(), jitterPercent, rand.Float64}
+		return &PercentJitteredBackoffer{
+			wrapped: wrapped(),
+			jitter:  jitterPercent,
+			random:  rand.Float64,
+		}
 	}
 }
 
