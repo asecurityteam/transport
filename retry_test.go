@@ -66,6 +66,7 @@ type retryRoundTipperFixture struct {
 func (rt *retryRoundTipperFixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	rt.lock.Lock()
 	var result, e, latency = rt.responses[rt.Calls].Response, rt.responses[rt.Calls].Error, rt.responses[rt.Calls].Sleep
+	result.Request = r
 	rt.Calls = rt.Calls + 1
 	rt.lock.Unlock()
 	select {
@@ -134,6 +135,57 @@ func TestRetryTimeIfLatency(t *testing.T) {
 	}
 	if e == nil {
 		t.Fatal("expected an error but got nil")
+	}
+}
+
+func TestContextKeepAlive(t *testing.T) {
+	var responses = []retryRoundTipperFixtureResponse{
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+	}
+	var wrapped = newRetryRoundTripperFixture(responses...)
+	var rt = NewRetrier(
+		NewFixedBackoffPolicy(0),
+		NewTimeoutRetryPolicy(time.Millisecond),
+	)(wrapped)
+
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Millisecond)
+	defer cancel()
+	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
+	var res, e = rt.RoundTrip(req.WithContext(ctx))
+	if wrapped.Calls != 1 {
+		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
+	}
+	if e != nil {
+		t.Fatalf("expected a nil error but got %s", e.Error())
+	}
+	if res.Request.Context().Err() != nil {
+		t.Fatal("context should not have been cancelled but was")
+	}
+}
+
+func TestContextKeepAliveWithRetries(t *testing.T) {
+	var responses = []retryRoundTipperFixtureResponse{
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
+		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
+	}
+	var wrapped = newRetryRoundTripperFixture(responses...)
+	var rt = NewRetrier(
+		NewFixedBackoffPolicy(0),
+		NewTimeoutRetryPolicy(time.Millisecond),
+	)(wrapped)
+
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Millisecond)
+	defer cancel()
+	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
+	var res, e = rt.RoundTrip(req.WithContext(ctx))
+	if wrapped.Calls != 2 {
+		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
+	}
+	if e != nil {
+		t.Fatalf("expected a nil error but got %s", e.Error())
+	}
+	if res.Request.Context().Err() != nil {
+		t.Fatal("context should not have been cancelled but was")
 	}
 }
 
