@@ -236,7 +236,6 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 	}
 	var response *http.Response
 	var requestCtx, cancel = context.WithCancel(parentCtx)
-	defer cancel()
 	var req = copier.Copy().WithContext(requestCtx)
 
 	var retriers = make([]Retrier, 0, len(c.retryPolicies))
@@ -254,11 +253,12 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 	for c.shouldRetry(r, response, e, retriers) {
 		select {
 		case <-parentCtx.Done():
+			cancel()
 			return nil, parentCtx.Err()
 		case <-time.After(backoffer.Backoff(r, response, e)):
 		}
-		requestCtx, cancel = context.WithCancel(parentCtx)
-		defer cancel()
+		cancel()
+		requestCtx, cancel = context.WithCancel(parentCtx) // nolint
 		var req = copier.Copy().WithContext(requestCtx)
 		for _, retrier := range retriers {
 			if requester, ok := retrier.(Requester); ok {
@@ -267,7 +267,10 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 		}
 		response, e = c.wrapped.RoundTrip(req)
 	}
-	return response, e
+	if e != nil {
+		cancel()
+	}
+	return response, e // nolint
 }
 
 func (c *Retry) shouldRetry(r *http.Request, response *http.Response, e error, retriers []Retrier) bool {
