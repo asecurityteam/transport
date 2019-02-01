@@ -59,10 +59,10 @@ decorator that can be configured to retry on a number of conditions within a
 number of limits without adding more complexity to code using the `http.Client`.
 
 ```golang
-var retryDecorator = transport.NewRetry(
+var retryDecorator = transport.NewRetrier(
   transport.NewPercentJitteredBackoffPolicy(
-    .2, // Jitter within 20% of the delay.
     transport.NewFixedBackoffPolicy(50*time.Millisecond),
+    .2, // Jitter within 20% of the delay.
   ),
   transport.NewLimitedRetryPolicy(
     3, // Only make up to 3 retry attempts
