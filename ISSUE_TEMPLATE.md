@@ -1,6 +1,6 @@
 ### Prerequisites
 
-* Checked that your issue isn't already filed: [https://bitbucket.org/atlassian/transport/issues?status=new&status=open](https://bitbucket.org/atlassian/transport/issues?status=new&status=open)
+* Checked that your issue isn't already filed: [https://gihub.com/asecurityteam/transport/issues?status=new&status=open](https://gihub.com/asecurityteam/transport/issues?status=new&status=open)
 
 ### Description
 
@@ -18,7 +18,7 @@
 
 **Reproduces how often:** [What percentage of the time does it reproduce?]
 
-###Did this work in previous versions of the go-stride client?
+###Did this work in previous versions of transport?
 
 Yes / No / Don't know
 

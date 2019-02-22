@@ -1,10 +1,32 @@
-# transport #
+<a id="markdown-transport" name="transport"></a>
+# transport
 
 **An extendable toolkit for improving the standard library HTTP client.**
 
-## Usage ##
+<!-- TOC -->
 
-### Creating A Transport ###
+- [transport](#transport)
+    - [Usage](#usage)
+        - [Creating A Transport](#creating-a-transport)
+        - [Decorators](#decorators)
+            - [Retry](#retry)
+            - [Hedging](#hedging)
+            - [Headers](#headers)
+            - [Decorator Chains](#decorator-chains)
+        - [Transport Extensions](#transport-extensions)
+            - [Recycle Transport](#recycle-transport)
+            - [Rotating Transport](#rotating-transport)
+    - [Contributing](#contributing)
+        - [License](#license)
+        - [Contributing Agreement](#contributing-agreement)
+
+<!-- /TOC -->
+
+<a id="markdown-usage" name="usage"></a>
+## Usage
+
+<a id="markdown-creating-a-transport" name="creating-a-transport"></a>
+### Creating A Transport
 
 The standard library `http.Transport` implementation is largely sufficient for
 for most uses of `http.Client`. However, the `http.DefaultTransport` used by
@@ -43,7 +65,8 @@ var client2 = &http.Client{
 }
 ```
 
-### Decorators ###
+<a id="markdown-decorators" name="decorators"></a>
+### Decorators
 
 In addition to providing the transport constructor, this package provides a
 handful of tools that make operating the `http.Transport` a little easier for
@@ -51,7 +74,8 @@ complex use cases. Each of these additions comes in the form of a wrapper
 around the transport in a way that is seamless to the `http.Client` and any
 code that uses the `http.Client`.
 
-#### Retry ####
+<a id="markdown-retry" name="retry"></a>
+#### Retry
 
 One of the most common needs for network based code is to retry on intermittent,
 or transient, errors. To help with this use case, this package provides a retry
@@ -87,7 +111,8 @@ The above snippet adds retry logic that:
   -   Retries automatically if the response code is 500.
   -   Cancels an active request and retries if it takes longer than 100ms.
 
-#### Hedging ####
+<a id="markdown-hedging" name="hedging"></a>
+#### Hedging
 
 The hedging decorator fans out a new request at each time interval defined
 by the backoff policy, and returns the first response received. For
@@ -116,7 +141,8 @@ The above snippet adds hedging logic that:
   -   Fans out a new request if no response is received in 50ms.
   -   Fans out a maximum of 10 parallel requests before all in-flight requests are cancelled.
 
-#### Headers ####
+<a id="markdown-headers" name="headers"></a>
+#### Headers
 
 Another common need is to inject headers automatically into outgoing requests
 so that application code doesn't have to be aware of elements like
@@ -144,11 +170,12 @@ token into the headers on each request. The constructor takes any function
 matching the signature shown above to allow for any level of complexity in
 selecting the header name and value.
 
-#### Decorator Chains ####
+<a id="markdown-decorator-chains" name="decorator-chains"></a>
+#### Decorator Chains
 
 Most use cases require more than one decorator. To help, this package provides
 a decorator chain implementation that can be used to collect a series of
-decorator behaviours and have them applied in a specific order to any given
+decorator behaviors and have them applied in a specific order to any given
 transport:
 
 ```golang
@@ -187,20 +214,22 @@ in the same order they are given. For example, a chain containing middleware
 A(B(C(D(TRANSPORT))))
 ```
 
-### Transport Extensions ###
+<a id="markdown-transport-extensions" name="transport-extensions"></a>
+### Transport Extensions
 
 Decorators are a powerful pattern and a great deal of complexity can be isolated
 by using them. However, there are still some aspects of the core
-`http.Transport` behaviour that can be harmful in production if not altered.
-This package provides some modifications of the standard behaviour to account
+`http.Transport` behavior that can be harmful in production if not altered.
+This package provides some modifications of the standard behavior to account
 for these cases.
 
-#### Recycle Transport ####
+<a id="markdown-recycle-transport" name="recycle-transport"></a>
+#### Recycle Transport
 
 The default settings of the `http.Transport` include enabling the connection
-pool. Having a connection pool can be a highly effective optimisation by
+pool. Having a connection pool can be a highly effective optimization by
 allowing the cost of performing DNS lookups, acquiring a TCP connection, and
-performing TLS handshakes to be amortised over a potentially large number of
+performing TLS handshakes to be amortized over a potentially large number of
 outgoing requests.
 
 One of the major deficiencies of the built-in connection pool is that there are
@@ -242,15 +271,16 @@ var finalTransport = transport.NewRecycler(
 var client = &http.Client{Transport: finalTransport}
 ```
 
-Building on the decorator examples, in this snipper we construct a new transport
+Building on the decorator examples, in this snippet we construct a new transport
 factory that is bound to a set of decorators that add functionality. Then we
 wrap the factory in a recycler that is configured to refresh the connection
-pool every five minutes with a randomised jitter within +/- one minute.
+pool every five minutes with a randomized jitter within +/- one minute.
 
 *Note: There is currently no reliable way by which per-connection lifetime
 limits can be added. We are limited to managing the entire pool.*
 
-#### Rotating Transport ####
+<a id="markdown-rotating-transport" name="rotating-transport"></a>
+#### Rotating Transport
 
 The internal connection management strategies of the standard library HTTP/1 and
 HTTP/2 transports are quite different. The HTTP/1 transport must use a single
@@ -261,7 +291,7 @@ all requests.
 
 When communicating with an HTTP server that supports HTTP/2 the `http.Transport`
 automatically creates an HTTP/2 transport internally and re-routes all requests
-through it. Oftentimes, this is a great optimisation that we get for free.
+through it. Oftentimes, this is a great optimization that we get for free.
 However, there are some edge cases around using a single connection for all
 outgoing requests. One of the larger edge cases is related to increased latency
 when experiencing packet loss. Several folks
@@ -310,7 +340,7 @@ var client = &http.Client{Transport: finalTransport}
 The above is meant to illustrate two things. The first is the configuration of
 a rotator modification that ensures there are always at least five TCP
 connections in use for each HTTP/2 endpoint rather than one. The other is how
-the tools of this package can be composited with each other. The example above
+the tools of this package can be composed with each other. The example above
 configures each of the five connection pools to recycle every four to five
 minutes just like the previous example that focused on the recycler.
 
@@ -323,13 +353,16 @@ It is important to note that using this option for HTTP/1 connections may make
 the connection pooling *worse* because the connection management is so
 different. **It is only recommended to use this option with HTTP/2 connections.**
 
-## Contributing ##
+<a id="markdown-contributing" name="contributing"></a>
+## Contributing
 
-### License ###
+<a id="markdown-license" name="license"></a>
+### License
 
 This project is licensed under Apache 2.0. See LICENSE.txt for details.
 
-### Contributing Agreement ###
+<a id="markdown-contributing-agreement" name="contributing-agreement"></a>
+### Contributing Agreement
 
 Atlassian requires signing a contributor's agreement before we can accept a
 patch. If you are an individual you can fill out the
