@@ -6,9 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
 func TestRequestCopier(t *testing.T) {
@@ -52,58 +53,38 @@ func TestRequestCopier(t *testing.T) {
 	}
 }
 
-type retryRoundTipperFixtureResponse struct {
-	Error    error
-	Response *http.Response
-	Sleep    time.Duration
-}
-type retryRoundTipperFixture struct {
-	Calls     int
-	responses []retryRoundTipperFixtureResponse
-	lock      *sync.Mutex
-}
-
-func (rt *retryRoundTipperFixture) RoundTrip(r *http.Request) (*http.Response, error) {
-	rt.lock.Lock()
-	var result, e, latency = rt.responses[rt.Calls].Response, rt.responses[rt.Calls].Error, rt.responses[rt.Calls].Sleep
-	result.Request = r
-	rt.Calls = rt.Calls + 1
-	rt.lock.Unlock()
-	select {
-	case <-time.After(latency):
-		return result, e
-	case <-r.Context().Done():
-		return nil, r.Context().Err()
-	}
-}
-
-func newRetryRoundTripperFixture(responses ...retryRoundTipperFixtureResponse) *retryRoundTipperFixture {
-	return &retryRoundTipperFixture{
-		Calls:     0,
-		lock:      &sync.Mutex{},
-		responses: responses,
+func newRoundTripWithLatencyFunc(resp *http.Response, latency time.Duration) func(r *http.Request) (*http.Response, error) {
+	return func(r *http.Request) (*http.Response, error) {
+		resp.Request = r
+		select {
+		case <-time.After(latency):
+			return resp, nil
+		case <-r.Context().Done():
+			return nil, r.Context().Err()
+		}
 	}
 }
 
 func TestRetryTimeIfNoLatency(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
 	var rt = NewRetrier(
 		NewFixedBackoffPolicy(0),
-		NewTimeoutRetryPolicy(time.Millisecond),
+		NewTimeoutRetryPolicy(time.Minute),
 	)(wrapped)
+
+	var roundTripFunc = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, 0)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFunc).Times(1)
 
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var resp, e = rt.RoundTrip(req)
-	if wrapped.Calls != 1 {
-		t.Fatal("retry engaged before timeout condition")
-	}
 	if e != nil {
 		t.Fatal(e.Error())
 	}
@@ -113,48 +94,59 @@ func TestRetryTimeIfNoLatency(t *testing.T) {
 }
 
 func TestRetryTimeIfLatency(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
 	var rt = NewRetrier(
 		NewFixedBackoffPolicy(0),
 		NewTimeoutRetryPolicy(time.Millisecond),
 	)(wrapped)
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Millisecond)
+	var ctx, cancel = context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
+	var roundTripWithLatencyFunc = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, time.Minute)
+	var roundTripDeadlineExceededFunc = func(r *http.Request) (*http.Response, error) {
+		cancel()
+		return nil, context.DeadlineExceeded
+	}
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripWithLatencyFunc).Times(2)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripDeadlineExceededFunc).Times(1)
+
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var _, e = rt.RoundTrip(req.WithContext(ctx))
-	if wrapped.Calls != 3 {
-		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
-	}
 	if e == nil {
 		t.Fatal("expected an error but got nil")
 	}
 }
 
 func TestContextKeepAlive(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
 	var rt = NewRetrier(
 		NewFixedBackoffPolicy(0),
-		NewTimeoutRetryPolicy(time.Millisecond),
+		NewTimeoutRetryPolicy(time.Minute),
 	)(wrapped)
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Millisecond)
+	var roundTripFunc = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, 0)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFunc).Times(1)
+
+	var ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var res, e = rt.RoundTrip(req.WithContext(ctx))
-	if wrapped.Calls != 1 {
-		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
-	}
 	if e != nil {
 		t.Fatalf("expected a nil error but got %s", e.Error())
 	}
@@ -164,23 +156,32 @@ func TestContextKeepAlive(t *testing.T) {
 }
 
 func TestContextKeepAliveWithRetries(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
 	var rt = NewRetrier(
 		NewFixedBackoffPolicy(0),
 		NewTimeoutRetryPolicy(time.Millisecond),
 	)(wrapped)
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Millisecond)
+	var roundTripFuncWithLatency = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, time.Minute)
+	var roundTripFuncWithoutLatency = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, 0)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFuncWithLatency).Times(1)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFuncWithoutLatency).Times(1)
+
+	var ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var res, e = rt.RoundTrip(req.WithContext(ctx))
-	if wrapped.Calls != 2 {
-		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
-	}
 	if e != nil {
 		t.Fatalf("expected a nil error but got %s", e.Error())
 	}
@@ -190,48 +191,55 @@ func TestContextKeepAliveWithRetries(t *testing.T) {
 }
 
 func TestRetryCode(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
 	var rt = NewRetrier(
 		NewFixedBackoffPolicy(0),
 		NewStatusCodeRetryPolicy(http.StatusInternalServerError),
 	)(wrapped)
 
+	var roundTripFuncWithError = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       http.NoBody,
+	}, 0)
+	var roundTripFunc = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, time.Second)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFuncWithError).Times(4)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFunc).Times(1)
+
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var _, e = rt.RoundTrip(req)
-	if wrapped.Calls != 5 {
-		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
-	}
 	if e != nil {
 		t.Fatalf("expected a success but got: %s", e.Error())
 	}
 }
 
 func TestRetryLimit(t *testing.T) {
-	var responses = []retryRoundTipperFixtureResponse{
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusInternalServerError, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: 0},
-		{Error: nil, Response: &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString(``))}, Sleep: time.Second},
-	}
-	var wrapped = newRetryRoundTripperFixture(responses...)
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
 	var rt = NewRetrier(
 		NewFixedBackoffPolicy(0),
 		NewLimitedRetryPolicy(3, NewStatusCodeRetryPolicy(http.StatusInternalServerError)),
 	)(wrapped)
 
+	var roundTripFuncWithError = newRoundTripWithLatencyFunc(&http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       http.NoBody,
+	}, 0)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(roundTripFuncWithError).Times(4)
+
 	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
 	var _, e = rt.RoundTrip(req)
-	if wrapped.Calls != 4 {
-		t.Fatalf("retried the wrong number of times: %d", wrapped.Calls)
-	}
 	if e != nil {
 		t.Fatalf("expected a response with bad code but got: %s", e.Error())
 	}
