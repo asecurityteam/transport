@@ -33,7 +33,7 @@ func RecycleOptionTTL(ttl time.Duration) RecycleOption {
 	}
 }
 
-// RecycleOptionTTLJitter adds a randomised jitter to the TTL that is plus or
+// RecycleOptionTTLJitter adds a randomized jitter to the TTL that is plus or
 // minus the duration value given.
 func RecycleOptionTTLJitter(jitter time.Duration) RecycleOption {
 	return func(r *Recycler) *Recycler {
