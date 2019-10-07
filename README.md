@@ -1,5 +1,6 @@
 <a id="markdown-transport" name="transport"></a>
 # transport
+[![GoDoc](https://godoc.org/github.com/asecurityteam/transport?status.svg)](https://godoc.org/github.com/asecurityteam/transport)
 
 **An extendable toolkit for improving the standard library HTTP client.**
 
