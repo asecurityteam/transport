@@ -1,6 +1,8 @@
 <a id="markdown-transport" name="transport"></a>
 # transport
 [![GoDoc](https://godoc.org/github.com/asecurityteam/transport?status.svg)](https://godoc.org/github.com/asecurityteam/transport)
+[![Build Status](https://travis-ci.com/asecurityteam/transport.png?branch=master)](https://travis-ci.com/asecurityteam/transport)
+[![codecov.io](https://codecov.io/github/asecurityteam/transport/coverage.svg?branch=master)](https://codecov.io/github/asecurityteam/transport?branch=master)
 
 **An extendable toolkit for improving the standard library HTTP client.**
 
