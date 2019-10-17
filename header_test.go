@@ -24,7 +24,7 @@ func TestRequestHeaderAddsHeaders(t *testing.T) {
 	}
 
 	var fixture = &fixtureHeaderTransport{}
-	var client = NewRequestHeader(provider)(fixture)
+	var client = NewHeader(provider)(fixture)
 	var r, _ = http.NewRequest("GET", "/", nil)
 	_, _ = client.RoundTrip(r)
 	if fixture.Request.Header.Get("KEY") != value {
@@ -41,7 +41,7 @@ func TestResponseHeaderAddsHeaders(t *testing.T) {
 
 	resp := &http.Response{Header: http.Header{}}
 	var fixture = &fixtureHeaderTransport{Response: resp}
-	var client = NewResponseHeader(provider)(fixture)
+	var client = NewHeaders(nil, provider)(fixture)
 	var r, _ = http.NewRequest("GET", "/", nil)
 	modifiedResp, _ := client.RoundTrip(r)
 	if fixture.Request.Header.Get("KEY") == value {

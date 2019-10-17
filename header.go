@@ -4,61 +4,55 @@ import (
 	"net/http"
 )
 
-// RequestHeader is a decorator that injects a header value into every request.
-type RequestHeader struct {
-	wrapped  http.RoundTripper
-	provider RequestHeaderProvider
+// Header is a decorator that injects a header value into every request.
+type Header struct {
+	wrapped          http.RoundTripper
+	requestProvider  HeaderProvider
+	responseProvider ResponseHeaderProvider
 }
 
-// RequestHeaderProvider is mapping function that generates the required header name
+// HeaderProvider is mapping function that generates the required header name
 // and value from an outgoing request.
-type RequestHeaderProvider func(*http.Request) (headerName string, headerValue string)
+type HeaderProvider func(*http.Request) (headerName string, headerValue string)
 
 // RoundTrip annotates the outgoing request and calls the wrapped Client.
-func (c *RequestHeader) RoundTrip(r *http.Request) (*http.Response, error) {
-	var name, value = c.provider(r)
-	r.Header.Set(name, value)
-	return c.wrapped.RoundTrip(r)
+func (c *Header) RoundTrip(r *http.Request) (*http.Response, error) {
+	if c.requestProvider != nil {
+		var name, value = c.requestProvider(r)
+		r.Header.Set(name, value)
+	}
+	resp, err := c.wrapped.RoundTrip(r)
+	if err != nil {
+		return nil, err
+	}
+	if c.responseProvider != nil {
+		var name, value = c.responseProvider(resp)
+		resp.Header.Set(name, value)
+	}
+	return resp, nil
 }
 
-// NewRequestHeader wraps a transport in order to include custom headers.
-func NewRequestHeader(provider RequestHeaderProvider) func(http.RoundTripper) http.RoundTripper {
+// NewHeader wraps a transport in order to include custom request headers.
+func NewHeader(requestProvider HeaderProvider) func(http.RoundTripper) http.RoundTripper {
 	return func(c http.RoundTripper) http.RoundTripper {
-		return &RequestHeader{
-			wrapped:  c,
-			provider: provider,
+		return &Header{
+			wrapped:         c,
+			requestProvider: requestProvider,
 		}
 	}
-}
-
-// ResponseHeader is a decorator that injects a header value into every request.
-type ResponseHeader struct {
-	wrapped  http.RoundTripper
-	provider ResponseHeaderProvider
 }
 
 // ResponseHeaderProvider is mapping function that generates the required header name
 // and value to an outgoing response.
 type ResponseHeaderProvider func(*http.Response) (headerName string, headerValue string)
 
-// RoundTrip calls the wrapped Client and annotates the outgoing response
-func (c *ResponseHeader) RoundTrip(r *http.Request) (*http.Response, error) {
-
-	resp, err := c.wrapped.RoundTrip(r)
-	if err != nil {
-		return nil, err
-	}
-	var name, value = c.provider(resp)
-	resp.Header.Set(name, value)
-	return resp, nil
-}
-
-// NewResponseHeader wraps a transport in order to include custom headers.
-func NewResponseHeader(provider ResponseHeaderProvider) func(http.RoundTripper) http.RoundTripper {
+// NewHeaders wraps a transport in order to include custom request and response headers.
+func NewHeaders(requestProvider HeaderProvider, responseProvider ResponseHeaderProvider) func(http.RoundTripper) http.RoundTripper {
 	return func(c http.RoundTripper) http.RoundTripper {
-		return &ResponseHeader{
-			wrapped:  c,
-			provider: provider,
+		return &Header{
+			wrapped:          c,
+			requestProvider:  requestProvider,
+			responseProvider: responseProvider,
 		}
 	}
 }
