@@ -32,7 +32,7 @@
 ### Creating A Transport
 
 The standard library `http.Transport` implementation is largely sufficient
-most uses of `http.Client`. However, the `http.DefaultTransport` used by
+for most uses of `http.Client`. However, the `http.DefaultTransport` used by
 the client is not configured for production use. Several of the timeout values,
 TLS handshake for example, are set in the seconds. Likewise, the dial methods
 used to establish TCP connections are allowed upwards of thirty seconds before
