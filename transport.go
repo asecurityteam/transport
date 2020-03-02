@@ -144,13 +144,27 @@ func OptionMaxResponseHeaderBytes(max int64) Option {
 }
 
 // OptionDefaultTransport configures a transport to match the http.DefaultTransport.
+//
+// Deprecated: The New() method uses a copy of the http.DefaultTransport as the
+// base transport on which options are applied. This option is redundant and
+// can be removed wherever it is used.
 func OptionDefaultTransport(t *http.Transport) *http.Transport {
-	return http.DefaultTransport.(*http.Transport).Clone()
+	t = OptionProxy(http.ProxyFromEnvironment)(t)
+	t = OptionDialContext((&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		DualStack: true,
+	}).DialContext)(t)
+	t = OptionMaxIdleConns(100)(t)
+	t = OptionIdleConnTimeout(90 * time.Second)(t)
+	t = OptionTLSHandshakeTimeout(10 * time.Second)(t)
+	t = OptionExpectContinueTimeout(time.Second)(t)
+	return t
 }
 
 // New applies the given options to a Transport and returns it.
 func New(opts ...Option) *http.Transport {
-	var t = &http.Transport{}
+	var t = http.DefaultTransport.(*http.Transport).Clone()
 	for _, opt := range opts {
 		t = opt(t)
 	}
