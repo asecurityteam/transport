@@ -9,19 +9,19 @@
 <!-- TOC -->
 
 - [transport](#transport)
-    - [Usage](#usage)
-        - [Creating A Transport](#creating-a-transport)
-        - [Decorators](#decorators)
-            - [Retry](#retry)
-            - [Hedging](#hedging)
-            - [Headers](#headers)
-            - [Decorator Chains](#decorator-chains)
-        - [Transport Extensions](#transport-extensions)
-            - [Recycle Transport](#recycle-transport)
-            - [Rotating Transport](#rotating-transport)
-    - [Contributing](#contributing)
-        - [License](#license)
-        - [Contributing Agreement](#contributing-agreement)
+  - [Usage](#usage)
+    - [Creating A Transport](#creating-a-transport)
+    - [Decorators](#decorators)
+      - [Retry](#retry)
+      - [Hedging](#hedging)
+      - [Headers](#headers)
+      - [Decorator Chains](#decorator-chains)
+    - [Transport Extensions](#transport-extensions)
+      - [Recycle Transport](#recycle-transport)
+      - [Rotating Transport](#rotating-transport)
+  - [Contributing](#contributing)
+    - [License](#license)
+    - [Contributing Agreement](#contributing-agreement)
 
 <!-- /TOC -->
 
@@ -44,7 +44,6 @@ functional arguments to make it easier to configure. For example:
 ```golang
 var client = &http.Client{
   Transport: transport.New(
-    transport.OptionDefaultTransport,
     transport.OptionMaxResponseHeaderBytes(4096),
     transport.OptionDisableCompression(true),
   ),
@@ -56,7 +55,6 @@ is able to produce any number of transports with the same configuration:
 
 ```golang
 var factory = transport.NewFactory(
-  transport.OptionDefaultTransport,
   transport.OptionMaxResponseHeaderBytes(4096),
   transport.OptionDisableCompression(true),
 )
@@ -98,7 +96,6 @@ var retryDecorator = transport.NewRetrier(
   ),
 )
 var t = transport.New(
-  transport.OptionDefaultTransport,
   transport.OptionMaxResponseHeaderBytes(4096),
   transport.OptionDisableCompression(true),
 )
@@ -129,7 +126,6 @@ var hedgingDecorator = transport.NewHedger(
 	transport.NewFixedBackoffPolicy(50*time.Millisecond),
 )
 var t = transport.New(
-	transport.OptionDefaultTransport,
 	transport.OptionMaxResponseHeaderBytes(4096),
 	transport.OptionDisableCompression(true),
 )
@@ -159,7 +155,6 @@ var headerDecorator = transport.NewHeader(
   }
 )
 var t = transport.New(
-  transport.OptionDefaultTransport,
   transport.OptionMaxResponseHeaderBytes(4096),
   transport.OptionDisableCompression(true),
 )
@@ -199,7 +194,6 @@ var chain = transport.Chain{
   headerDecorator,
 }
 var t = transport.New(
-  transport.OptionDefaultTransport,
   transport.OptionMaxResponseHeaderBytes(4096),
   transport.OptionDisableCompression(true),
 )
@@ -262,7 +256,6 @@ var chain = transport.Chain{
   headerDecorator,
 }
 var factory = transport.NewFactory(
-  transport.OptionDefaultTransport,
   transport.OptionMaxResponseHeaderBytes(4096),
   transport.OptionDisableCompression(true),
 )
@@ -324,7 +317,6 @@ var chain = transport.Chain{
   headerDecorator,
 }
 var factory = transport.NewFactory(
-  transport.OptionDefaultTransport,
   transport.OptionMaxResponseHeaderBytes(4096),
   transport.OptionDisableCompression(true),
 )
