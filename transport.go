@@ -144,6 +144,10 @@ func OptionMaxResponseHeaderBytes(max int64) Option {
 }
 
 // OptionDefaultTransport configures a transport to match the http.DefaultTransport.
+//
+// Deprecated: The New() method uses a copy of the http.DefaultTransport as the
+// base transport on which options are applied. This option is redundant and
+// can be removed wherever it is used.
 func OptionDefaultTransport(t *http.Transport) *http.Transport {
 	t = OptionProxy(http.ProxyFromEnvironment)(t)
 	t = OptionDialContext((&net.Dialer{
@@ -160,7 +164,7 @@ func OptionDefaultTransport(t *http.Transport) *http.Transport {
 
 // New applies the given options to a Transport and returns it.
 func New(opts ...Option) *http.Transport {
-	var t = &http.Transport{}
+	var t = http.DefaultTransport.(*http.Transport).Clone()
 	for _, opt := range opts {
 		t = opt(t)
 	}
