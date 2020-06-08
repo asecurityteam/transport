@@ -26,14 +26,17 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 
 	retryAfter := 0
 	for {
-		select {
-		case <-parentCtx.Done():
+		if retryAfter > 0 {
+			select {
+			case <-parentCtx.Done():
+				cancel()
+				return nil, parentCtx.Err()
+			case <-time.After(time.Duration(retryAfter) * time.Millisecond):
+			}
 			cancel()
-			return nil, parentCtx.Err()
-		case <-time.After(time.Duration(retryAfter) * time.Millisecond):
+			requestCtx, cancel = context.WithCancel(parentCtx) // nolint
+			req = copier.Copy().WithContext(requestCtx)
 		}
-		cancel()
-		requestCtx, cancel = context.WithCancel(parentCtx) // nolint
 		response, e = c.wrapped.RoundTrip(req)
 		if e != nil {
 			break
