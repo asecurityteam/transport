@@ -1,4 +1,3 @@
-<a id="markdown-transport" name="transport"></a>
 # transport
 [![GoDoc](https://godoc.org/github.com/asecurityteam/transport?status.svg)](https://godoc.org/github.com/asecurityteam/transport)
 [![Build Status](https://travis-ci.com/asecurityteam/transport.png?branch=master)](https://travis-ci.com/asecurityteam/transport)
@@ -8,13 +7,14 @@
 
 <!-- TOC -->
 
-- [transport](#transport)
+-- [transport](#transport)
   - [Usage](#usage)
     - [Creating A Transport](#creating-a-transport)
     - [Decorators](#decorators)
       - [Retry](#retry)
       - [Hedging](#hedging)
       - [Headers](#headers)
+      - [AccessLog](#accesslog)
       - [Decorator Chains](#decorator-chains)
     - [Transport Extensions](#transport-extensions)
       - [Recycle Transport](#recycle-transport)
@@ -25,10 +25,8 @@
 
 <!-- /TOC -->
 
-<a id="markdown-usage" name="usage"></a>
 ## Usage
 
-<a id="markdown-creating-a-transport" name="creating-a-transport"></a>
 ### Creating A Transport
 
 The standard library `http.Transport` implementation is largely sufficient
@@ -66,7 +64,6 @@ var client2 = &http.Client{
 }
 ```
 
-<a id="markdown-decorators" name="decorators"></a>
 ### Decorators
 
 In addition to providing the transport constructor, this package provides a
@@ -75,7 +72,6 @@ complex use cases. Each of these additions comes in the form of a wrapper
 around the transport in a way that is seamless to the `http.Client` and any
 code that uses the `http.Client`.
 
-<a id="markdown-retry" name="retry"></a>
 #### Retry
 
 One of the most common needs for network based code is to retry on intermittent,
@@ -111,7 +107,6 @@ The above snippet adds retry logic that:
   -   Retries automatically if the response code is 500.
   -   Cancels an active request and retries if it takes longer than 100ms.
 
-<a id="markdown-hedging" name="hedging"></a>
 #### Hedging
 
 The hedging decorator fans out a new request at each time interval defined
@@ -140,7 +135,6 @@ The above snippet adds hedging logic that:
   -   Fans out a new request if no response is received in 50ms.
   -   Fans out a maximum of 10 parallel requests before all in-flight requests are cancelled.
 
-<a id="markdown-headers" name="headers"></a>
 #### Headers
 
 Another common need is to inject headers automatically into outgoing requests
@@ -168,7 +162,40 @@ token into the headers on each request. The constructor takes any function
 matching the signature shown above to allow for any level of complexity in
 selecting the header name and value.
 
-<a id="markdown-decorator-chains" name="decorator-chains"></a>
+<a id="markdown-accesslog" name"accesslog">
+#### AccessLog
+
+A cornerstone of operational maturity is visibility between dependencies
+across the network. This is typically achieved with a combination of robust
+logs and metrics. One aspect of this is access logs for every request a
+service makes as a client to another.
+
+The access log transport decorator provides such a mechanism. By applying the
+snippet below, each request will emit a logline with key fields such as:
+
+* status
+* uri_path
+* http_method
+* port
+* site
+* duration
+
+And several others.
+
+```golang
+var t = transport.New(
+  transport.OptionMaxResponseHeaderBytes(4096),
+  transport.OptionDisableCompression(true),
+)
+var client = &http.Client{
+  Transport: transport.NewAccessLog()(t),
+}
+```
+
+For critical metrics related to HTTP client traffic to other services, see
+the stating analog to this http.Transport decorator in
+[httpstats](https://github.com/asecurityteam/httpstats).
+
 #### Decorator Chains
 
 Most use cases require more than one decorator. To help, this package provides
@@ -211,7 +238,6 @@ in the same order they are given. For example, a chain containing middleware
 A(B(C(D(TRANSPORT))))
 ```
 
-<a id="markdown-transport-extensions" name="transport-extensions"></a>
 ### Transport Extensions
 
 Decorators are a powerful pattern and a great deal of complexity can be isolated
@@ -220,7 +246,6 @@ by using them. However, there are still some aspects of the core
 This package provides some modifications of the standard behavior to account
 for these cases.
 
-<a id="markdown-recycle-transport" name="recycle-transport"></a>
 #### Recycle Transport
 
 The default settings of the `http.Transport` include enabling the connection
@@ -275,7 +300,6 @@ pool every five minutes with a randomized jitter within +/- one minute.
 *Note: There is currently no reliable way by which per-connection lifetime
 limits can be added. We are limited to managing the entire pool.*
 
-<a id="markdown-rotating-transport" name="rotating-transport"></a>
 #### Rotating Transport
 
 The internal connection management strategies of the standard library HTTP/1 and
@@ -348,15 +372,12 @@ It is important to note that using this option for HTTP/1 connections may make
 the connection pooling *worse* because the connection management is so
 different. **It is only recommended to use this option with HTTP/2 connections.**
 
-<a id="markdown-contributing" name="contributing"></a>
 ## Contributing
 
-<a id="markdown-license" name="license"></a>
 ### License
 
 This project is licensed under Apache 2.0. See LICENSE.txt for details.
 
-<a id="markdown-contributing-agreement" name="contributing-agreement"></a>
 ### Contributing Agreement
 
 Atlassian requires signing a contributor's agreement before we can accept a
