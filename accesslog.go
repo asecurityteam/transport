@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,8 +11,7 @@ import (
 type accessLog struct {
 	Time                   string `logevent:"@timestamp"`
 	Schema                 string `logevent:"schema,default=access"`
-	SourceIP               string `logevent:"src_ip"`
-	DestinationIP          string `logevent:"dest_ip"`
+	Host                   string `logevent:"host"`
 	Site                   string `logevent:"site"`
 	HTTPRequestContentType string `logevent:"http_request_content_type"`
 	HTTPMethod             string `logevent:"http_method"`
@@ -35,14 +33,12 @@ type loggingTransport struct {
 
 // RoundTrip writes structured access logs for the request.
 func (c *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	var srcIP, _, _ = net.SplitHostPort(r.RemoteAddr)
-	var dstIP, dstPortStr, _ = net.SplitHostPort(r.Context().Value(http.LocalAddrContextKey).(net.Addr).String())
+	var dstPortStr = r.URL.Port()
 	var dstPort, _ = strconv.Atoi(dstPortStr)
 	var a = accessLog{
 		Time:                   time.Now().UTC().Format(time.RFC3339Nano),
-		DestinationIP:          dstIP,
+		Host:                   r.URL.Hostname(),
 		Port:                   dstPort,
-		SourceIP:               srcIP,
 		Site:                   r.Host,
 		HTTPRequestContentType: r.Header.Get("Content-Type"),
 		HTTPMethod:             r.Method,
