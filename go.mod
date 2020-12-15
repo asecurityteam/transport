@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/asecurityteam/logevent v1.4.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
 	github.com/justinas/alice v1.2.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/stretchr/testify v1.3.0
