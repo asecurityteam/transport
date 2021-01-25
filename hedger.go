@@ -22,13 +22,35 @@ type hedgedResponse struct {
 	Err      error
 }
 
-func (c *Hedger) hedgedRoundTrip(ctx context.Context, r *http.Request, resp chan *hedgedResponse) {
-	var response, err = c.wrapped.RoundTrip(r)
+func (c *Hedger) hedgedRoundTrip(doneCtx context.Context, requestCtx context.Context, r *http.Request, resp chan *hedgedResponse) { // nolint
+	// Create a local context to manage the request cancellation. Because these
+	// are all children of the source parentCtx they will eventually be
+	// canceled when the parent is canceled even if we do not call the cancel
+	// method returned here. The implication is that the source parent context
+	// _must_ end at some point. That is, a background context with no end of
+	// life would cause resources and memory to leak over time.
+	ctx, cancel := context.WithCancel(requestCtx) // nolint
+	// Create a local channel for accepting the results. This allows us to
+	// sink the result and close the goroutine under all conditions including
+	// if the context is canceled because it has a buffer space of one. If it is
+	// never read from then it will eventually be GC'd after the method exits.
+	localResp := make(chan *hedgedResponse, 1)
+	go func() {
+		var response, err = c.wrapped.RoundTrip(r.WithContext(ctx))
+		localResp <- &hedgedResponse{Response: response, Err: err}
+	}()
+
 	select {
-	case resp <- &hedgedResponse{Response: response, Err: err}:
-	case <-ctx.Done():
+	case resp <- <-localResp:
+	case <-doneCtx.Done():
+		// End work in flight if the parent signals that it needs no more
+		// responses. Because the response channel is unbuffered, all responses
+		// that complete will block on this select until they are read. The
+		// hedger will read only one of them and then trigger the Done() case
+		// for all other
+		cancel()
 	}
-}
+} // nolint
 
 // RoundTrip executes a new request at each time interval defined
 // by the backoff policy, and returns the first response received.
@@ -38,13 +60,19 @@ func (c *Hedger) RoundTrip(r *http.Request) (*http.Response, error) {
 		return nil, e
 	}
 	var parentCtx = r.Context()
+	// doneCtx is used to indicate that the RoundTrip is complete and any
+	// outstanding work should be canceled.
+	var doneCtx, done = context.WithCancel(parentCtx)
+	defer done()
+	// requestCtx is a copy of parentCtx without any modifications. This could
+	// likely just be parentCtx directly. Making a child out of habit.
+	requestCtx, _ := context.WithCancel(parentCtx) // nolint
+
 	var backoffer = c.backoffPolicy()
 	var respChan = make(chan *hedgedResponse)
-	var requestCtx, cancel = context.WithCancel(parentCtx)
-	defer cancel()
-	var request = copier.Copy().WithContext(requestCtx)
+	var request = copier.Copy()
 
-	go c.hedgedRoundTrip(requestCtx, request, respChan)
+	go c.hedgedRoundTrip(doneCtx, requestCtx, request, respChan)
 
 	for {
 		select {
@@ -53,8 +81,8 @@ func (c *Hedger) RoundTrip(r *http.Request) (*http.Response, error) {
 		case <-parentCtx.Done():
 			return nil, parentCtx.Err()
 		case <-time.After(backoffer.Backoff(r, nil, nil)):
-			request = copier.Copy().WithContext(requestCtx)
-			go c.hedgedRoundTrip(requestCtx, request, respChan)
+			request = copier.Copy()
+			go c.hedgedRoundTrip(doneCtx, requestCtx, request, respChan)
 		}
 	}
 }

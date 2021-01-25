@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -140,6 +141,60 @@ func TestHedgerContextTimeout(t *testing.T) {
 		if resp != nil {
 			errChan <- fmt.Sprintf("Expected resp nil, but got %v", resp)
 			return
+		}
+		close(done)
+	}()
+
+	select {
+	case e := <-errChan:
+		t.Fatal(e)
+	case <-done:
+		break
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("roundtrip took too long to exit")
+	}
+}
+
+func TestHedgerResponseContextNotCanceled(t *testing.T) {
+	// This test is intentionally not using mocks because the condition we're
+	// testing only shows up when the std lib http.Transport is being used. It
+	// wraps the Response.Body in a context aware reader that starts emitting
+	// errors as soon as the context used to make the request is canceled. The
+	// net result is that it is possible to get a success response from the
+	// hedger that then has an unreadable response body.
+	t.Parallel()
+
+	tsrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(10 * time.Millisecond)
+		_, _ = w.Write([]byte(`response data`))
+	}))
+	defer tsrv.Close()
+
+	client := tsrv.Client()
+	var backoffTime = 5 * time.Millisecond
+	var decorator = NewHedger(NewFixedBackoffPolicy(backoffTime))
+	client.Transport = decorator(client.Transport)
+	var req, _ = http.NewRequest("GET", tsrv.URL, http.NoBody)
+
+	var done = make(chan interface{})
+	var errChan = make(chan string)
+	go func() {
+		var resp, err = client.Do(req)
+		if err != nil {
+			errChan <- fmt.Sprintf("Got err %v but expected no error", err)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			errChan <- fmt.Sprintf("Got status code %d but expected status code %d",
+				resp.StatusCode, http.StatusOK)
+			return
+		}
+		if resp.Request.Context().Err() != nil {
+			errChan <- "the request context is canceled too soon. this prevents reading the response body"
+		}
+		if _, err = ioutil.ReadAll(resp.Body); err != nil {
+			errChan <- fmt.Sprintf("could not read the response body: %s", err)
 		}
 		close(done)
 	}()
