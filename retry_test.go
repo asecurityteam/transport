@@ -151,7 +151,7 @@ func TestContextKeepAlive(t *testing.T) {
 		t.Fatalf("expected a nil error but got %s", e.Error())
 	}
 	if res.Request.Context().Err() != nil {
-		t.Fatal("context should not have been cancelled but was")
+		t.Fatal("context should not have been canceled but was")
 	}
 }
 
@@ -186,7 +186,7 @@ func TestContextKeepAliveWithRetries(t *testing.T) {
 		t.Fatalf("expected a nil error but got %s", e.Error())
 	}
 	if res.Request.Context().Err() != nil {
-		t.Fatal("context should not have been cancelled but was")
+		t.Fatal("context should not have been canceled but was")
 	}
 }
 
