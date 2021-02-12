@@ -82,8 +82,8 @@ func NewRecyclerFactory(factory Factory, opts ...RecycleOption) Factory {
 func (c *Recycler) resetTransport() http.RoundTripper {
 	c.wrapped = c.factory()
 	c.currentUsage = 0
-	var renderedJitter = time.Duration(rand.Float64() * float64(c.ttlJitter))
-	if rand.Float64()*100 > 50 {
+	var renderedJitter = time.Duration(rand.Float64() * float64(c.ttlJitter)) // nolint:gosec
+	if rand.Float64()*100 > 50 {                                              // nolint:gosec
 		renderedJitter = -renderedJitter
 	}
 	c.nextTTL = time.Now().Add(c.ttl + renderedJitter)

@@ -80,7 +80,7 @@ func TestTransportOptions(t *testing.T) { //nolint:gocyclo
 	var dialTLSFunc = func(network, addr string) (net.Conn, error) {
 		return nil, testErr
 	}
-	var tlsConfig = &tls.Config{}
+	var tlsConfig = &tls.Config{} // nolint:gosec
 	var nextProto = map[string]func(authority string, c *tls.Conn) http.RoundTripper{
 		"test": nil,
 	}
@@ -110,7 +110,7 @@ func TestTransportOptions(t *testing.T) { //nolint:gocyclo
 			return nil
 		}},
 		{Name: "OptionDialTLS", Option: OptionDialTLS(dialTLSFunc), Verifier: func(tr *http.Transport) error {
-			var _, e = tr.DialTLS("", "")
+			var _, e = tr.DialTLS("", "") // nolint:go-lint,staticcheck
 			if e != testErr {
 				return errors.New("dial function was not set by OptionDialTLS")
 			}

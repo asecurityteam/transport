@@ -42,7 +42,7 @@ func OptionDial(dial func(network, addr string) (net.Conn, error)) Option {
 // OptionDialTLS installs a custom DialTLS configuration in the Transport.
 func OptionDialTLS(dial func(network, addr string) (net.Conn, error)) Option {
 	return func(t *http.Transport) *http.Transport {
-		t.DialTLS = dial
+		t.DialTLS = dial // nolint:go-lint,staticcheck
 		return t
 	}
 }
