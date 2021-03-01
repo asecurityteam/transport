@@ -3,7 +3,7 @@ module github.com/asecurityteam/transport
 go 1.12
 
 require (
-	github.com/asecurityteam/logevent v1.4.0
+	github.com/asecurityteam/logevent v1.5.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/mock v1.5.0
 	github.com/justinas/alice v1.2.0 // indirect
