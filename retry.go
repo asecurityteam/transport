@@ -183,6 +183,28 @@ func (b *FixedBackoffer) Backoff(*http.Request, *http.Response, error) time.Dura
 	return b.wait
 }
 
+// ExponentialBackoffer signals the client to wait for an initial amount of time,
+// doubling every retry
+type ExponentialBackoffer struct {
+	wait time.Duration
+}
+
+// NewExponentialBackoffPolicy generates a BackoffPolicy that returns double the value
+// returned in the previous call, using the wait parameter as the initial backoff value
+func NewExponentialBackoffPolicy(wait time.Duration) BackoffPolicy {
+	var backoffer = &ExponentialBackoffer{wait: wait}
+	return func() Backoffer {
+		return backoffer
+	}
+}
+
+// Backoff for an initial amount of time, doubling each retry
+func (b *ExponentialBackoffer) Backoff(*http.Request, *http.Response, error) time.Duration {
+	current := b.wait
+	b.wait = b.wait * 2
+	return current
+}
+
 // PercentJitteredBackoffer adjusts the backoff time by a random amount within
 // N percent of the duration to help with thundering herds.
 type PercentJitteredBackoffer struct {
