@@ -10,7 +10,8 @@ import (
 // RetryAfter determines whether or not the transport will automatically retry
 // a request based on configured behaviors for 429 responses with Retry-After header.
 type RetryAfter struct {
-	wrapped http.RoundTripper
+	wrapped       http.RoundTripper
+	backoffPolicy BackoffPolicy
 }
 
 // RoundTrip executes a request and applies one or more retry policies.
@@ -24,14 +25,15 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 	var requestCtx, cancel = context.WithCancel(parentCtx)
 	var req = copier.Copy().WithContext(requestCtx)
 
-	retryAfter := 0
+	var backoffer = c.backoffPolicy()
+	var retryAfter time.Duration
 	for {
 		if retryAfter > 0 {
 			select {
 			case <-parentCtx.Done():
 				cancel()
 				return nil, parentCtx.Err()
-			case <-time.After(time.Duration(retryAfter) * time.Millisecond):
+			case <-time.After(retryAfter):
 			}
 			cancel()
 			requestCtx, cancel = context.WithCancel(parentCtx) // nolint
@@ -46,11 +48,14 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 		} else {
 			retryAfterString := response.Header.Get("Retry-After")
 			if retryAfterString == "" {
-				break
-			}
-			var err error
-			if retryAfter, err = strconv.Atoi(retryAfterString); err != nil {
-				break
+				retryAfter = backoffer.Backoff(r, response, e)
+			} else {
+				var retryAfterInt int
+				var err error
+				if retryAfterInt, err = strconv.Atoi(retryAfterString); err != nil {
+					break
+				}
+				retryAfter = time.Duration(retryAfterInt) * time.Millisecond
 			}
 		}
 	}
@@ -60,10 +65,10 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 	return response, e // nolint
 }
 
-// NewRetryAfter configures a RoundTripper decorator to perform some number of
-// retries.
+// NewRetryAfter configures a RoundTripper decorator to honor a status code 429 response,
+// using the Retry-After header directive when present, or the backoffPolicy if not present.
 func NewRetryAfter() func(http.RoundTripper) http.RoundTripper {
 	return func(wrapped http.RoundTripper) http.RoundTripper {
-		return &RetryAfter{wrapped: wrapped}
+		return &RetryAfter{wrapped: wrapped, backoffPolicy: NewExponentialBackoffPolicy(20 * time.Millisecond)}
 	}
 }
