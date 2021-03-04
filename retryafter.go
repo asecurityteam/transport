@@ -54,7 +54,7 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 				if retryAfterInt, err = strconv.Atoi(retryAfterString); err != nil {
 					break
 				}
-				retryAfter = time.Duration(retryAfterInt) * time.Millisecond
+				retryAfter = time.Duration(retryAfterInt) * time.Second
 			}
 		}
 	}
@@ -68,6 +68,6 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 // using the Retry-After header directive when present, or the backoffPolicy if not present.
 func NewRetryAfter() func(http.RoundTripper) http.RoundTripper {
 	return func(wrapped http.RoundTripper) http.RoundTripper {
-		return &RetryAfter{wrapped: wrapped, backoffPolicy: NewExponentialBackoffPolicy(20 * time.Millisecond)}
+		return &RetryAfter{wrapped: wrapped, backoffPolicy: NewExponentialBackoffPolicy(1 * time.Second)}
 	}
 }
