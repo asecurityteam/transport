@@ -35,7 +35,6 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 				return nil, parentCtx.Err()
 			case <-time.After(retryAfter):
 			}
-			cancel()
 			requestCtx, cancel = context.WithCancel(parentCtx) // nolint
 			req = copier.Copy().WithContext(requestCtx)
 		}

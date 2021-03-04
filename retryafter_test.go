@@ -174,7 +174,7 @@ func TestRetryAfter429WithRetryAfter(t *testing.T) {
 			StatusCode: 429,
 			Body:       http.NoBody,
 			Header: map[string][]string{
-				"Retry-After": []string{"1000"},
+				"Retry-After": []string{"10"},
 			},
 		}, nil
 	}
@@ -216,7 +216,7 @@ func TestRetryAfter429WithDeadlineExceeded(t *testing.T) {
 			StatusCode: 429,
 			Body:       http.NoBody,
 			Header: map[string][]string{
-				"Retry-After": []string{"1000"},
+				"Retry-After": []string{"10"},
 			},
 		}, nil
 	}
