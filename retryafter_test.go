@@ -72,9 +72,9 @@ func TestRetryAfter429NoRetryAfter(t *testing.T) {
 		t.Fatalf("expected 200 but got %d", resp.StatusCode)
 	}
 
-	durationInMilliseconds := int64(duration / time.Millisecond)
-	if durationInMilliseconds < 60 {
-		t.Fatalf("expected execution time to take at least 20 + 40 milliseconds due to use of exponential backoff with initial value of 20 and two replies with 429, but got %d", durationInMilliseconds)
+	durationInSeconds := int64(duration / time.Second)
+	if durationInSeconds < 3 {
+		t.Fatalf("expected execution time to take at least 1 + 2 seconds due to use of exponential backoff with initial value of 1 and two replies with 429, but got %d", durationInSeconds)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestRetryAfter429ComboNoRetryAfterAndWithRetryAfter(t *testing.T) {
 			StatusCode: 429,
 			Body:       http.NoBody,
 			Header: map[string][]string{
-				"Retry-After": []string{"10"},
+				"Retry-After": []string{"1"},
 			},
 		}, nil
 	}
@@ -123,9 +123,9 @@ func TestRetryAfter429ComboNoRetryAfterAndWithRetryAfter(t *testing.T) {
 		t.Fatalf("expected 200 but got %d", resp.StatusCode)
 	}
 
-	durationInMilliseconds := int64(duration / time.Millisecond)
-	if durationInMilliseconds < 30 {
-		t.Fatalf("expected execution time to take at least 20 + 10 milliseconds due to use of exponential backoff with initial value of 20 and two replies with 429 where the second reply has Retry-After=10 header, but got %d", durationInMilliseconds)
+	durationInSeconds := int64(duration / time.Second)
+	if durationInSeconds < 2 {
+		t.Fatalf("expected execution time to take at least 1 + 1 seconds due to use of exponential backoff with initial value of 1 and two replies with 429 where the second reply has Retry-After=1 header, but got %d", durationInSeconds)
 	}
 }
 
@@ -174,7 +174,7 @@ func TestRetryAfter429WithRetryAfter(t *testing.T) {
 			StatusCode: 429,
 			Body:       http.NoBody,
 			Header: map[string][]string{
-				"Retry-After": []string{"10"},
+				"Retry-After": []string{"1"},
 			},
 		}, nil
 	}
@@ -216,7 +216,7 @@ func TestRetryAfter429WithDeadlineExceeded(t *testing.T) {
 			StatusCode: 429,
 			Body:       http.NoBody,
 			Header: map[string][]string{
-				"Retry-After": []string{"10"},
+				"Retry-After": []string{"1"},
 			},
 		}, nil
 	}
