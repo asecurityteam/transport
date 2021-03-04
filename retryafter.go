@@ -67,8 +67,8 @@ func (c *RetryAfter) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // NewRetryAfter configures a RoundTripper decorator to honor a status code 429 response,
 // using the Retry-After header directive when present, or the backoffPolicy if not present.
-func NewRetryAfter(backoffPolicy BackoffPolicy) func(http.RoundTripper) http.RoundTripper {
+func NewRetryAfter() func(http.RoundTripper) http.RoundTripper {
 	return func(wrapped http.RoundTripper) http.RoundTripper {
-		return &RetryAfter{wrapped: wrapped, backoffPolicy: backoffPolicy}
+		return &RetryAfter{wrapped: wrapped, backoffPolicy: NewExponentialBackoffPolicy(20 * time.Millisecond)}
 	}
 }

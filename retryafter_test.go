@@ -16,7 +16,7 @@ func TestRetryAfterNot429(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewFixedBackoffPolicy(0))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	rtFunc := func(r *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -44,7 +44,7 @@ func TestRetryAfter429NoRetryAfter(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewExponentialBackoffPolicy(10 * time.Millisecond))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	var rtFunc429 = func(r *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -73,8 +73,8 @@ func TestRetryAfter429NoRetryAfter(t *testing.T) {
 	}
 
 	durationInMilliseconds := int64(duration / time.Millisecond)
-	if durationInMilliseconds < 30 {
-		t.Fatalf("expected execution time to take at least 10 + 20 milliseconds due to use of exponential backoff with initial value of 10 and two replies with 429, but got %d", durationInMilliseconds)
+	if durationInMilliseconds < 60 {
+		t.Fatalf("expected execution time to take at least 20 + 40 milliseconds due to use of exponential backoff with initial value of 20 and two replies with 429, but got %d", durationInMilliseconds)
 	}
 }
 
@@ -85,7 +85,7 @@ func TestRetryAfter429ComboNoRetryAfterAndWithRetryAfter(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewExponentialBackoffPolicy(20 * time.Millisecond))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	var rtFunc429NoRetryAfter = func(r *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -136,7 +136,7 @@ func TestRetryAfter429BadRetryAfter(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewFixedBackoffPolicy(0))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	rtFunc := func(r *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -167,7 +167,7 @@ func TestRetryAfter429WithRetryAfter(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewFixedBackoffPolicy(0))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	rtFunc1 := func(r *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -206,7 +206,7 @@ func TestRetryAfter429WithDeadlineExceeded(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewFixedBackoffPolicy(0))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
@@ -243,7 +243,7 @@ func TestRetryContextCanceled(t *testing.T) {
 	defer ctrl.Finish()
 
 	var wrapped = NewMockRoundTripper(ctrl)
-	var rt = NewRetryAfter(NewFixedBackoffPolicy(0))(wrapped)
+	var rt = NewRetryAfter()(wrapped)
 
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
