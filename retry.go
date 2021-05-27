@@ -26,12 +26,15 @@ func newRequestCopier(r *http.Request) (*requestCopier, error) {
 	if r.Body != nil {
 		body, e = ioutil.ReadAll(r.Body)
 	}
+	// Setting the request body to nil after capturing it so that it is not
+	// included in the deep copy. This code already manages copying the
+	// content body.
+	r.Body = nil
 	return &requestCopier{original: r, body: body}, e
 }
 
 func (r *requestCopier) Copy() *http.Request {
-	var newRequest = new(http.Request)
-	*newRequest = *r.original
+	var newRequest = r.original.Clone(r.original.Context())
 	newRequest.Body = nil
 	if r.body != nil {
 		newRequest.Body = ioutil.NopCloser(bytes.NewBuffer(r.body))

@@ -208,3 +208,60 @@ func TestHedgerResponseContextNotCanceled(t *testing.T) {
 		t.Fatal("roundtrip took too long to exit")
 	}
 }
+
+func TestHedgerConcurrentHeaderModifications(t *testing.T) {
+	t.Parallel()
+
+	var ctrl = gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var wrapped = NewMockRoundTripper(ctrl)
+	var backoffTime = time.Millisecond
+	var decorator = NewHedger(NewFixedBackoffPolicy(backoffTime))
+	var client = &http.Client{
+		Transport: decorator(wrapped),
+	}
+	var req, _ = http.NewRequest("GET", "/", ioutil.NopCloser(bytes.NewReader([]byte(``))))
+	req = req.WithContext(context.Background())
+
+	wrapped.EXPECT().RoundTrip(gomock.Any()).Do(
+		func(r *http.Request) {
+			for x := 0; x < 100; x = x + 1 {
+				r.Header.Set("key", "value")
+			}
+			time.Sleep(time.Hour)
+		}).Return(
+		&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       http.NoBody,
+		},
+		nil,
+	).Times(5)
+	wrapped.EXPECT().RoundTrip(gomock.Any()).Return(
+		&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       http.NoBody,
+		},
+		nil,
+	)
+	var done = make(chan interface{})
+	var errChan = make(chan string)
+	go func() {
+		var resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			errChan <- fmt.Sprintf("Got status code %d and err %v, expected status code %d and err %v",
+				resp.StatusCode, err, http.StatusOK, nil)
+			return
+		}
+		close(done)
+	}()
+
+	select {
+	case e := <-errChan:
+		t.Fatal(e)
+	case <-done:
+		break
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("roundtrip took too long to exit")
+	}
+}
