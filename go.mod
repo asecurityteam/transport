@@ -1,6 +1,6 @@
 module github.com/asecurityteam/transport
 
-go 1.12
+go 1.17
 
 require (
 	github.com/asecurityteam/logevent v1.5.0
