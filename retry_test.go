@@ -10,6 +10,7 @@ import (
 	"time"
 
 	gomock "github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRequestCopier(t *testing.T) {
@@ -273,4 +274,25 @@ func TestJitterCalculation(t *testing.T) {
 	if result != (time.Millisecond - 100*time.Microsecond) {
 		t.Fatal(result)
 	}
+}
+
+func TestNewExponentialBackofferPolicy(t *testing.T) {
+	exponentialBackoffPolicy := NewExponentialBackoffPolicy(time.Second)
+	backoffer1 := exponentialBackoffPolicy()
+	backoffer2 := exponentialBackoffPolicy()
+
+	var req, _ = http.NewRequest(http.MethodGet, "/", nil)
+	var res = &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       http.NoBody,
+	}
+
+	backoffer1DurationRound1 := backoffer1.Backoff(req, res, nil)
+	backoffer1DurationRound2 := backoffer1.Backoff(req, res, nil)
+
+	backoffer2DurationRound1 := backoffer2.Backoff(req, res, nil)
+
+	assert.Equal(t, backoffer1DurationRound2, backoffer1DurationRound1*2)
+	assert.Equal(t, backoffer1DurationRound1, backoffer2DurationRound1)
+
 }
