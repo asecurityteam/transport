@@ -195,9 +195,8 @@ type ExponentialBackoffer struct {
 // NewExponentialBackoffPolicy generates a BackoffPolicy that returns double the value
 // returned in the previous call, using the wait parameter as the initial backoff value
 func NewExponentialBackoffPolicy(wait time.Duration) BackoffPolicy {
-	var backoffer = &ExponentialBackoffer{wait: wait}
 	return func() Backoffer {
-		return backoffer
+		return &ExponentialBackoffer{wait: wait}
 	}
 }
 
