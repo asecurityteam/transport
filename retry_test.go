@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -16,7 +15,7 @@ import (
 func TestRequestCopier(t *testing.T) {
 	var bodyContent = "TEST"
 	var e error
-	var request, _ = http.NewRequest(http.MethodGet, "/", ioutil.NopCloser(bytes.NewBufferString(bodyContent)))
+	var request, _ = http.NewRequest(http.MethodGet, "/", io.NopCloser(bytes.NewBufferString(bodyContent)))
 	var copier *requestCopier
 	copier, e = newRequestCopier(request)
 	if e != nil {
