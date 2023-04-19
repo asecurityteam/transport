@@ -34,7 +34,7 @@ func OptionDialContext(dialCtx func(ctx context.Context, network, addr string) (
 // OptionDial installs a custom Dial configuration in the Transport.
 func OptionDial(dial func(network, addr string) (net.Conn, error)) Option {
 	return func(t *http.Transport) *http.Transport {
-		t.Dial = dial //nolint, Dial func is deprecated
+		t.Dial = dial // nolint:go-lint,staticcheck
 		return t
 	}
 }

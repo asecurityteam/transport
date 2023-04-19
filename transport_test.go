@@ -103,7 +103,7 @@ func TestTransportOptions(t *testing.T) { //nolint:gocyclo
 			return nil
 		}},
 		{Name: "OptionDial", Option: OptionDial(dialFunc), Verifier: func(tr *http.Transport) error {
-			var _, e = tr.Dial("", "") //nolint, Dial func is deprecated
+			var _, e = tr.Dial("", "") // nolint:go-lint,staticcheck
 			if e != testErr {
 				return errors.New("dial function was not set by OptionDial")
 			}
