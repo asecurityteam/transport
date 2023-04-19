@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"time"
@@ -24,7 +23,7 @@ func newRequestCopier(r *http.Request) (*requestCopier, error) {
 	var body []byte
 	var e error
 	if r.Body != nil {
-		body, e = ioutil.ReadAll(r.Body)
+		body, e = io.ReadAll(r.Body)
 	}
 	// Setting the request body to nil after capturing it so that it is not
 	// included in the deep copy. This code already manages copying the
@@ -37,9 +36,9 @@ func (r *requestCopier) Copy() *http.Request {
 	var newRequest = r.original.Clone(r.original.Context())
 	newRequest.Body = nil
 	if r.body != nil {
-		newRequest.Body = ioutil.NopCloser(bytes.NewBuffer(r.body))
+		newRequest.Body = io.NopCloser(bytes.NewBuffer(r.body))
 		newRequest.GetBody = func() (io.ReadCloser, error) {
-			return ioutil.NopCloser(bytes.NewBuffer(r.body)), nil
+			return io.NopCloser(bytes.NewBuffer(r.body)), nil
 		}
 	}
 	return newRequest

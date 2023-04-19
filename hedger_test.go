@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,7 +26,7 @@ func TestHedgerSuccess(t *testing.T) {
 	var client = &http.Client{
 		Transport: decorator(wrapped),
 	}
-	var req, _ = http.NewRequest("GET", "/", ioutil.NopCloser(bytes.NewReader([]byte(``))))
+	var req, _ = http.NewRequest("GET", "/", io.NopCloser(bytes.NewReader([]byte(``))))
 	req = req.WithContext(context.Background())
 	wrapped.EXPECT().RoundTrip(gomock.Any()).Return(
 		&http.Response{
@@ -68,7 +68,7 @@ func TestHedgerMultipleCalls(t *testing.T) {
 	var client = &http.Client{
 		Transport: decorator(wrapped),
 	}
-	var req, _ = http.NewRequest("GET", "/", ioutil.NopCloser(bytes.NewReader([]byte(``))))
+	var req, _ = http.NewRequest("GET", "/", io.NopCloser(bytes.NewReader([]byte(``))))
 	req = req.WithContext(context.Background())
 
 	wrapped.EXPECT().RoundTrip(gomock.Any()).Do(
@@ -122,7 +122,7 @@ func TestHedgerContextTimeout(t *testing.T) {
 	var client = &http.Client{
 		Transport: decorator(wrapped),
 	}
-	var req, _ = http.NewRequest("GET", "/", ioutil.NopCloser(bytes.NewReader([]byte(``))))
+	var req, _ = http.NewRequest("GET", "/", io.NopCloser(bytes.NewReader([]byte(``))))
 
 	var timeoutCtx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	time.Sleep(time.Nanosecond)
@@ -193,7 +193,7 @@ func TestHedgerResponseContextNotCanceled(t *testing.T) {
 		if resp.Request.Context().Err() != nil {
 			errChan <- "the request context is canceled too soon. this prevents reading the response body"
 		}
-		if _, err = ioutil.ReadAll(resp.Body); err != nil {
+		if _, err = io.ReadAll(resp.Body); err != nil {
 			errChan <- fmt.Sprintf("could not read the response body: %s", err)
 		}
 		close(done)
@@ -221,7 +221,7 @@ func TestHedgerConcurrentHeaderModifications(t *testing.T) {
 	var client = &http.Client{
 		Transport: decorator(wrapped),
 	}
-	var req, _ = http.NewRequest("GET", "/", ioutil.NopCloser(bytes.NewReader([]byte(``))))
+	var req, _ = http.NewRequest("GET", "/", io.NopCloser(bytes.NewReader([]byte(``))))
 	req = req.WithContext(context.Background())
 
 	wrapped.EXPECT().RoundTrip(gomock.Any()).Do(
