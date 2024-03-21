@@ -1,7 +1,7 @@
 TAG := $(shell git rev-parse --short HEAD)
 DIR := $(shell pwd -L)
 DIR := $(shell pwd -L)
-SDCLI_VERSION :=v1.4.0
+SDCLI_VERSION :=v1.5
 SDCLI=docker run --rm -v "$(DIR):$(DIR)" -w "$(DIR)" asecurityteam/sdcli:$(SDCLI_VERSION)
 
 

@@ -1,0 +1,27 @@
+on: [push]
+
+jobs:
+  golang:
+    runs-on: ubuntu-latest # we execute everything except make in docker anyway
+    name: GoLang Basics
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: FS Permissions
+        # workaround for permissions with contaner attempting to create directories
+        run: chmod 777 -R "$(pwd)"
+      - name: Dep
+        run: make dep
+      - name: Lint
+        run: make lint
+      - name: Unit Tests
+        run: make test
+      - name: Integration Tests
+        run: make integration
+      - name: Test Coverage
+        run: make coverage
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: .coverage/combined.cover.out
+          token: ${{ secrets.CODECOV_TOKEN }} 
