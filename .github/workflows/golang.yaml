@@ -20,8 +20,3 @@ jobs:
         run: make integration
       - name: Test Coverage
         run: make coverage
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: .coverage/combined.cover.out
-          token: ${{ secrets.CODECOV_TOKEN }} 
