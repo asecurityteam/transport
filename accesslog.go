@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/asecurityteam/logevent"
+	"github.com/asecurityteam/logevent/v2"
 )
 
 type accessLog struct {
