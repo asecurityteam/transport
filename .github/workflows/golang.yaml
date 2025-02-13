@@ -1,4 +1,7 @@
-on: [push]
+on:
+  push:
+  pull_request: #sonar refuses to display branch analysis results on Free plan even for OSS
+    types: [opened, synchronize, reopened]
 
 jobs:
   golang:
@@ -7,6 +10,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of Sonar scan
       - name: FS Permissions
         # workaround for permissions with contaner attempting to create directories
         run: chmod 777 -R "$(pwd)"
@@ -14,9 +19,16 @@ jobs:
         run: make dep
       - name: Lint
         run: make lint
+      - name: Coverage Setup 
+        # workaround for permissions with container attempting to create directory
+        run: mkdir .coverage && chmod 777 .coverage
       - name: Unit Tests
         run: make test
       - name: Integration Tests
         run: make integration
-      - name: Test Coverage
-        run: make coverage
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # run on PRs and once we merge to main, as we need baseline runs for main in Sonar
+        if: ${{ ( github.event_name == 'pull_request' ) || ( github.ref == 'refs/heads/master' ) }}

@@ -3,6 +3,19 @@
 
 **An extendable toolkit for improving the standard library HTTP client.**
 
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=bugs)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=code_smells)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=coverage)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=ncloc)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=alert_status)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=security_rating)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=sqale_index)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=asecurityteam_transport&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=asecurityteam_transport)
+
+
 <!-- TOC -->
 
 -- [transport](#transport)
