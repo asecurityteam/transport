@@ -1,5 +1,5 @@
-github.com/asecurityteam/logevent/v2 v2.0.2 h1:dPPRNqnMgjvHTf/NxpvrgAjAPvA7AG/bF2FnCrDnoD0=
-github.com/asecurityteam/logevent/v2 v2.0.2/go.mod h1:cCjepcJdgAKoVfOTftnZ/Mp0WMsfwgaJ75UOjfKTxVU=
+github.com/asecurityteam/logevent/v2 v2.0.3 h1:mmoCvGVevPdi0EJrF7E6Yj7q81C+C8jnp6kaRxy2QHg=
+github.com/asecurityteam/logevent/v2 v2.0.3/go.mod h1:aj/47NAIpgppAr5A4mzFOXJ3/PM9h2MmQFRiCynmgg4=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -21,12 +21,12 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rs/xhandler v0.0.0-20170707052532-1eb70cf1520d h1:8Tt7DYYdFqLlOIuyiE0RluKem4T+048AUafnIjH80wg=
 github.com/rs/xhandler v0.0.0-20170707052532-1eb70cf1520d/go.mod h1:RvLn4FgxWubrpZHtQLnOf6EwhN2hEMusxZOhcW9H3UQ=
-github.com/rs/xid v1.5.0 h1:mKX4bl4iPYJtEIxp6CYiUuLQ/8DYMoz0PUdtGgMFRVc=
-github.com/rs/xid v1.5.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
+github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
+github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
 github.com/rs/xlog v0.0.0-20171227185259-131980fab91b h1:65vbRzwfvVUk63GnEiBy1lsY40FLZQev13NK+LnyHAE=
 github.com/rs/xlog v0.0.0-20171227185259-131980fab91b/go.mod h1:PJ0wmxt3GdhZAbIT0S8HQXsHuLt11tPiF8bUKXUV77w=
-github.com/rs/zerolog v1.33.0 h1:1cU2KZkvPxNyfgEmhHAz/1A9Bz+llsdYzklWFzgp0r8=
-github.com/rs/zerolog v1.33.0/go.mod h1:/7mN4D5sKwJLZQ2b/znpjC3/GQWY/xaDXUM0kKWRHss=
+github.com/rs/zerolog v1.34.0 h1:k43nTLIwcTVQAncfCw4KZ2VY6ukYoZaBPNOE8txlOeY=
+github.com/rs/zerolog v1.34.0/go.mod h1:bJsvje4Z08ROH4Nhs5iH600c3IkWhwp44iRc54W6wYQ=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
