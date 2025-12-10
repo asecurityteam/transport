@@ -274,6 +274,10 @@ func (c *Retry) RoundTrip(r *http.Request) (*http.Response, error) {
 
 	response, e = c.wrapped.RoundTrip(req)
 	for c.shouldRetry(r, response, e, retriers) {
+		if parentCtx.Err() != nil {
+			cancel()
+			return nil, parentCtx.Err()
+		}
 		select {
 		case <-parentCtx.Done():
 			cancel()
