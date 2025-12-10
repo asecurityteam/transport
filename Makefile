@@ -2,7 +2,6 @@
 
 TAG := $(shell git rev-parse --short HEAD)
 DIR := $(shell pwd -L)
-DIR := $(shell pwd -L)
 LOCAL_GO_IMAGE ?= transport-go
 LOCAL_LINT_IMAGE ?= transport-golangci-lint
 GODOCKER = docker run --rm -v "$(DIR):$(DIR)" -w "$(DIR)" $(LOCAL_GO_IMAGE)
